@@ -141,6 +141,87 @@ int main(int argc, char** argv){
   
   if(pAck.getSeqnum() == 0 && pAck.isACK() == 1)
     cout<<"Recieved Final Ack. Handshake Complete!...\n";
+  else
+    cout<<"Invalid ACK received";
+
+  /Can start splitting file into packets now
+  //char reader[MAXDATALENGTH];
+
+  vector<Packet> data;
+  //vector<int> seqNums;
+
+  int readBytes;
+  int wnd_start = 1;
+  int wnd_end = 5*MAXPACKETSIZE;
+
+
+  int startSeq = 1;
+  seqNums.push_back(startSeq);
+  char tempBuff[MAXDATALENGTH];
+
+  while(readBytes = read(filefd, tempBuff, sizeof(tempBuff)) != 0){
+
+    if(startSeq > 30720)
+      startSeq = 1;
+
+    Packet pk;
+    pk.setSeqnum(startSeq);
+    pk.setPacketdata(tempBuff);
+    data.push_back(pk);
+    startSeq+=readBytes;
+
+    cerr<<sizeof(pk);
+  }
+
+  //Send the packets using Selective Repeat protocols:
+
+  int nextseqNum = 1; //The next available sequence number
+  int index = 0;
+  char randomBuff[MAXPACKETSIZE];
+  char packets[MAXPACKETSIZE];
+  bzero(randomBuff, MAXPACKETSIZE);
+  bzero(packets, MAXPACKETSIZE);
+  size_t bt;
+  int expectedACKnum = 1;
+
+  while(true){
+
+    while(nextseqNum > wnd_start && nextseqNum < wnd_end){
+
+      data[index].createPacket(packets,0);
+      if(sendto(sockfd, packets, sizeof(data), 0,  (struct sockaddr *) &client_addr, client) < 0){
+        cerr<<"Error in sending packet!";
+        exit(1);
+      }
+      index++;
+      nextseqNum+=sizeof(data[index]); // check if sizeof(data[index]) is MAXPACKETSIZE
+    }
+
+    if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client){
+      cerr<<"Error in receiving from client!"
+      exit(1);
+    }
+    else {
+      Packet pp;
+      pp.extractPacket(randomBuff,bt);
+      if(pp.isACK()){
+        if(pp.getACKnum() == expectedACKnum){
+          continue;
+      }
+      }
+      else
+        cerr<<"Invalid ACK";
+    }
+)
+  }
+
+
+ //Creating FIN packet after all data has been packetized:
+ Packet fin;
+ fin.setFIN();
+ fin.setSeqnum(0);
+ data.push_back(fin);
+
 
   /*
   cerr<<"Received ACK for SYNACK";
