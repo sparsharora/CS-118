@@ -2,13 +2,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 
 #define MAXSEQNO 30720
 #define SSTHRESH 30720
-#define MAXWINDOW 15360
 #define MAXPACKETSIZE 1024
 #define MAXDATALENGTH 1014
 #define BUFSIZE 1032
+#define MAXWINDOWSIZE 5120
 using namespace std;
 
 // Variables needed for basic TCP like header:
@@ -29,7 +30,7 @@ class Packet {
 public:
   Packet();
   int getACKnum();
-  int getSeqnum();
+  int getSeqnum() const;
   void setACKnum(int16_t ACK);
   void setSeqnum(int16_t seq);
   bool isSYN();
@@ -39,12 +40,12 @@ public:
   void setACK();
   void setFIN();
   Header tcpHeader();
+  char* getData(); 
   //void setData(char* ch);    //Make this function with a dynamic function signature
   void extractPacket(char* c, size_t bytes);
-  void createPacket(char* store, int flag);
+  void createPacket(char* store);
   void setPacketdata(char *ch);
   void createFirstPacket(const char* filename, char* store);
-
 
 private:
   char packetData[MAXDATALENGTH];    //To store the data
@@ -61,6 +62,11 @@ Packet::Packet(){
   header.FIN=0;
 }
 
+
+char* Packet::getData()
+{
+  return this->packetData;
+}
 void Packet::setPacketdata(char* ch){
   strcpy(this->packetData, ch);
 }
@@ -97,7 +103,7 @@ void Packet::createFirstPacket(const char* filename, char* store){
   //cout<<endl<<store<<endl;
   //return store;
 }
-void Packet::createPacket(char* store, int flag){
+void Packet::createPacket(char* store){
 
   char temp[sizeof(int)];
   bzero(store, MAXPACKETSIZE);
@@ -119,9 +125,7 @@ void Packet::createPacket(char* store, int flag){
   strcat(store,temp);
   strcat(store, ",");
 
-  if(flag)
   strcat(store, packetData);
-
   strcat(store,"\0");
 
 }
@@ -154,7 +158,7 @@ int Packet::getACKnum(){
   return this->header.acknum;
 }
 
-int Packet::getSeqnum(){
+int Packet::getSeqnum() const{
   return this->header.seqnum;
 }
 
