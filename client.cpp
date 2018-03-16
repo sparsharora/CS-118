@@ -127,14 +127,13 @@ int main(int argc, char** argv){
   int head=0;
   int ctr=0;
   int bwnd = 1, ewnd = 4097;
-
+  Packet in;
   while(1){
     
     bzero(synp, MAXPACKETSIZE);
     
     rtc = recvfrom(sockfd, synp, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
 
-    Packet in;
     in.extractPacket(synp, rtc);
 
     if(in.isFIN()==1)
@@ -143,8 +142,15 @@ int main(int argc, char** argv){
 	break;
       }
 
-    if(in.getSeqnum() >= bwnd && in.getSeqnum() <= ewnd){
+    bool isInWindow = false;
 
+    if(ewnd < bwnd && (in.getSeqnum() <= ewnd || in.getSeqnum() >= bwnd))
+      isInWindow = true;
+    else if (in.getSeqnum() >= bwnd && in.getSeqnum() <= ewnd)
+      isInWindow = true;
+
+    if (isInWindow){
+	
       int pno = ((in.getSeqnum()-1)/MAXPACKETSIZE);
       buffer[pno % 5] = &in;
 
@@ -159,32 +165,29 @@ int main(int argc, char** argv){
 
       bwnd+=ctr*1024;
       ewnd+=ctr*1024;
-      ctr=0;
 
-    }
+      if (bwnd > MAXSEQNO)
+	bwnd = bwnd - MAXSEQNO;
+      if (ewnd > MAXSEQNO)
+	ewnd = ewnd - MAXSEQNO;
       
+      ctr=0;
+    }
+            
       //Send ACK
       
       Packet pack;
       bzero(synp, MAXPACKETSIZE);
       
-      final.setACK();
-      final.setSeqnum(in.getSeqnum());
+      pack.setACK();
+      pack.setSeqnum(in.getSeqnum());
       
-      final.createPacket(synp);
+      pack.createPacket(synp);
       
       rtc = sendto(sockfd, synp, sizeof(synp), 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
       
       //ACK SENT
-  
-      
-  }
-    
+  }    
 
-	
-
-
-
-  
   return 0;
 }
