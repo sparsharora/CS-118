@@ -41,7 +41,7 @@ public:
   Header tcpHeader();
   //void setData(char* ch);    //Make this function with a dynamic function signature
   void extractPacket(char* c, size_t bytes);
-  void createPacket(char* store, int flag);
+  void createPacket(char* store);
   void setPacketdata(char *ch);
   void createFirstPacket(const char* filename, char* store);
 
@@ -97,7 +97,7 @@ void Packet::createFirstPacket(const char* filename, char* store){
   //cout<<endl<<store<<endl;
   //return store;
 }
-void Packet::createPacket(char* store, int flag){
+void Packet::createPacket(char* store){
 
   char temp[sizeof(int)];
   bzero(store, MAXPACKETSIZE);
@@ -119,9 +119,7 @@ void Packet::createPacket(char* store, int flag){
   strcat(store,temp);
   strcat(store, ",");
 
-  if(flag)
   strcat(store, packetData);
-
   strcat(store,"\0");
 
 }

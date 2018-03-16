@@ -15,6 +15,7 @@
 #include <iostream>
 #include "Packet.h"
 #include <fstream>
+#include <set>
 using namespace std;
 
 
@@ -122,6 +123,17 @@ int main(int argc, char** argv){
   out.open(Filename);
 
   
+  int bwnd = 1, ewnd = 5071;
+  set<Packet> recvd;
 
+  /*  while(1){
+
+    bzero(synp, MAXPACKETSIZE);
+
+    rtc = recvfrom(sockfd, synp, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
+
+    Packet in;
+    in.extractPacket(synp, rtc); 
+  */
   return 0;
  }

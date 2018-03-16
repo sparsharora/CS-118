@@ -13,12 +13,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-//#include <cstdint>
+#include <vector>
 #include "Packet.h"
 using namespace std;
 
 //const int port_num = 2010;
 const char* Filename;
+int filefd;
 char* ver;
 char* conn;
 int status=200;
@@ -90,7 +91,13 @@ int main(int argc, char** argv){
    
     
     if(p.isSYN()==1){
-      
+
+      /* filefd = open(Filename, O_RDONLY);
+      if(filefd<0){
+	cout<<"Error opening file!";
+	exit(1);
+      }
+      */
       cout<<"Received SYN! Sending SYNACK... ";
       //pACKnum = p.getSeqnum() + 1;
       break;
@@ -143,11 +150,11 @@ int main(int argc, char** argv){
     cout<<"Recieved Final Ack. Handshake Complete!...\n";
   else
     cout<<"Invalid ACK received";
-
-  /Can start splitting file into packets now
+  /*
+  //Can start splitting file into packets now
   //char reader[MAXDATALENGTH];
 
-  vector<Packet> data;
+  vector<Packet> storedata;
   //vector<int> seqNums;
 
   int readBytes;
@@ -156,7 +163,7 @@ int main(int argc, char** argv){
 
 
   int startSeq = 1;
-  seqNums.push_back(startSeq);
+  //seqNums.push_back(startSeq);
   char tempBuff[MAXDATALENGTH];
 
   while(readBytes = read(filefd, tempBuff, sizeof(tempBuff)) != 0){
@@ -167,7 +174,7 @@ int main(int argc, char** argv){
     Packet pk;
     pk.setSeqnum(startSeq);
     pk.setPacketdata(tempBuff);
-    data.push_back(pk);
+    storedata.push_back(pk);
     startSeq+=readBytes;
 
     cerr<<sizeof(pk);
@@ -188,7 +195,7 @@ int main(int argc, char** argv){
 
     while(nextseqNum > wnd_start && nextseqNum < wnd_end){
 
-      data[index].createPacket(packets,0);
+      storedata[index].createPacket(packets,0);
       if(sendto(sockfd, packets, sizeof(data), 0,  (struct sockaddr *) &client_addr, client) < 0){
         cerr<<"Error in sending packet!";
         exit(1);
@@ -197,8 +204,8 @@ int main(int argc, char** argv){
       nextseqNum+=sizeof(data[index]); // check if sizeof(data[index]) is MAXPACKETSIZE
     }
 
-    if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client){
-      cerr<<"Error in receiving from client!"
+    if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client)){
+      cerr<<"Error in receiving from client!";
       exit(1);
     }
     else {
@@ -207,20 +214,20 @@ int main(int argc, char** argv){
       if(pp.isACK()){
         if(pp.getACKnum() == expectedACKnum){
           continue;
-      }
+	}
       }
       else
         cerr<<"Invalid ACK";
     }
-)
+    
   }
 
 
- //Creating FIN packet after all data has been packetized:
+//Creating FIN packet after all data has been packetized:
  Packet fin;
  fin.setFIN();
  fin.setSeqnum(0);
- data.push_back(fin);
+ storedata.push_back(fin);*/ //HEREEEEEEEEEEEEEE
 
 
   /*
