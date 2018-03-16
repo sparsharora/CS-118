@@ -123,10 +123,10 @@ int main(int argc, char** argv){
   ofstream out;
   out.open(Filename);
 
-  
+  Packet* buffer[] = {NULL, NULL, NULL, NULL, NULL};
+  int head=0;
+  int ctr=0;
   int bwnd = 1, ewnd = 4097;
-  vector<Packet> recvd;
-  int curr=1;
 
   while(1){
     
@@ -137,11 +137,31 @@ int main(int argc, char** argv){
     Packet in;
     in.extractPacket(synp, rtc);
 
+    if(in.isFIN()==1)
+      {
+	//TODO: implement TIME_WAIT
+	break;
+      }
+
     if(in.getSeqnum() >= bwnd && in.getSeqnum() <= ewnd){
 
-      if(find(recvd.begin(), recvd.end(), in.getSeqnum()) == recvd.end()){
-	recvd.push_back(in);
-      }
+      int pno = ((in.getSeqnum()-1)/MAXPACKETSIZE);
+      buffer[pno % 5] = &in;
+
+      //Check what to write
+      while(buffer[head]!=NULL)
+	{
+	  out<<in.getData();
+	  ctr++;
+	  buffer[head]=NULL;
+	  head++;
+	}
+
+      bwnd+=ctr*1024;
+      ewnd+=ctr*1024;
+      ctr=0;
+
+    }
       
       //Send ACK
       
@@ -156,13 +176,11 @@ int main(int argc, char** argv){
       rtc = sendto(sockfd, synp, sizeof(synp), 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
       
       //ACK SENT
-
-      //CHECK if seq num is expected
-
+  
       
-    }//if within window
+  }
     
-  } //end of while
+
 	
 
 

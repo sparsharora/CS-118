@@ -6,10 +6,10 @@
 
 #define MAXSEQNO 30720
 #define SSTHRESH 30720
-#define MAXWINDOW 15360
 #define MAXPACKETSIZE 1024
 #define MAXDATALENGTH 1014
 #define BUFSIZE 1032
+#define MAXWINDOWSIZE 5120
 using namespace std;
 
 // Variables needed for basic TCP like header:
@@ -40,16 +40,12 @@ public:
   void setACK();
   void setFIN();
   Header tcpHeader();
+  char* getData(); 
   //void setData(char* ch);    //Make this function with a dynamic function signature
   void extractPacket(char* c, size_t bytes);
   void createPacket(char* store);
   void setPacketdata(char *ch);
   void createFirstPacket(const char* filename, char* store);
-  bool operator==(const int right) const
-  {
-    return this->getSeqnum()== right;
-  }
-
 
 private:
   char packetData[MAXDATALENGTH];    //To store the data
@@ -66,6 +62,11 @@ Packet::Packet(){
   header.FIN=0;
 }
 
+
+char* Packet::getData()
+{
+  return this->packetData;
+}
 void Packet::setPacketdata(char* ch){
   strcpy(this->packetData, ch);
 }
