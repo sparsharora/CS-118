@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 
 #define MAXSEQNO 30720
 #define SSTHRESH 30720
@@ -29,7 +30,7 @@ class Packet {
 public:
   Packet();
   int getACKnum();
-  int getSeqnum();
+  int getSeqnum() const;
   void setACKnum(int16_t ACK);
   void setSeqnum(int16_t seq);
   bool isSYN();
@@ -44,6 +45,10 @@ public:
   void createPacket(char* store);
   void setPacketdata(char *ch);
   void createFirstPacket(const char* filename, char* store);
+  bool operator==(const int right) const
+  {
+    return this->getSeqnum()== right;
+  }
 
 
 private:
@@ -152,7 +157,7 @@ int Packet::getACKnum(){
   return this->header.acknum;
 }
 
-int Packet::getSeqnum(){
+int Packet::getSeqnum() const{
   return this->header.seqnum;
 }
 

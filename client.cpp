@@ -15,7 +15,8 @@
 #include <iostream>
 #include "Packet.h"
 #include <fstream>
-#include <set>
+#include <vector>
+
 using namespace std;
 
 
@@ -123,17 +124,49 @@ int main(int argc, char** argv){
   out.open(Filename);
 
   
-  int bwnd = 1, ewnd = 5071;
-  set<Packet> recvd;
+  int bwnd = 1, ewnd = 4097;
+  vector<Packet> recvd;
+  int curr=1;
 
-  /*  while(1){
-
+  while(1){
+    
     bzero(synp, MAXPACKETSIZE);
-
+    
     rtc = recvfrom(sockfd, synp, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
 
     Packet in;
-    in.extractPacket(synp, rtc); 
-  */
+    in.extractPacket(synp, rtc);
+
+    if(in.getSeqnum() >= bwnd && in.getSeqnum() <= ewnd){
+
+      if(find(recvd.begin(), recvd.end(), in.getSeqnum()) == recvd.end()){
+	recvd.push_back(in);
+      }
+      
+      //Send ACK
+      
+      Packet pack;
+      bzero(synp, MAXPACKETSIZE);
+      
+      final.setACK();
+      final.setSeqnum(in.getSeqnum());
+      
+      final.createPacket(synp);
+      
+      rtc = sendto(sockfd, synp, sizeof(synp), 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
+      
+      //ACK SENT
+
+      //CHECK if seq num is expected
+
+      
+    }//if within window
+    
+  } //end of while
+	
+
+
+
+  
   return 0;
- }
+}
