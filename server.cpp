@@ -28,6 +28,11 @@ char* stm;
 int newfd;
 ifstream infile;
 
+int mapping(int temp){
+  int ackNum = (temp -1)/1024;
+  return ackNum;
+}
+
 int main(int argc, char** argv){
 
   if(argc!=2){
@@ -200,9 +205,13 @@ int main(int argc, char** argv){
   size_t bt;
   int expectedACKnum = 1;
 
-  while(true){
+  int ackSize = storedata.size();
+  vector<int> wait(ackSize,0);  //Vector if ackNumbers 
+  
+  
+  while(true && index < storedata.size()){
 
-    while(nextseqNum >= wnd_start && nextseqNum < wnd_end){   //TODO : Chek when seq number changes!!!!
+    while(nextseqNum >= wnd_start && nextseqNum < wnd_end){
      
       storedata[index].createPacket(packets);
       cout<<"Seq: "<<storedata[index].getSeqnum()<<endl;
@@ -214,22 +223,45 @@ int main(int argc, char** argv){
       nextseqNum+=sizeof(data[index]); // check if sizeof(data[index]) is MAXPACKETSIZE
     }
 
-    bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client);
-
-    if(bt < 0){
-      cerr<<"Error in receiving from client!";
+    if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client) < 0){
+      cout<<"Error in receiving from client!";
       exit(1);
     }
     else {
       Packet pp;
       pp.extractPacket(randomBuff,bt);
       if(pp.isACK()){
-        if(pp.getACKnum() == expectedACKnum){
-          continue;
+
+	int packetNumber = mapping(pp.getACKnum());
+	wait.at(packetNumber) = pp.getACKnum();
+
+	if(pp.getACKnum()> wnd_start && pp.getACKnum() < wnd_end){
+
+	  if(pp.getACKnum() == expectedACKnum){
+
+	    int flag = 0;
+	    int i;
+	    for(i = packetNumber; i < packetNumber+5; i++){
+	      if(wait[i]==0)
+		flag=1;break;}
+
+	    //If entire window has been ACKd
+	    if(!flag){
+	      expectedACKnum = wait[i-1] + MAXPACKETSIZE;
+	      wnd_start = expectedACKnum;
+	      wnd_end = expectedACKnum + 4*MAXPACKETSIZE;
+	    }
+	    else{
+	      expectedACKnum = wait[i-1] + MAXPACKETSIZE;
+	      wnd_start = expectedACKnum;
+	      wnd_end = expectedACKnum + 4*MAXPACKETSIZE;
+	    }
+	  }
 	}
       }
+      
       else
-        cerr<<"Invalid ACK";
+        cerr<<"Invalid ACK";continue;
     }
 
   }
@@ -239,8 +271,15 @@ int main(int argc, char** argv){
   Packet fin;
   fin.setFIN();
   fin.setSeqnum(0);
+  char last[MAXPACKETSIZE];
+  fin.createPacket(last);
   storedata.push_back(fin);
   
+  if(ret = sendto(sockfd,last,sizeof(last),0,(struct sockaddr*) &client_addr, client) < 0){
+    cout<<"Error in sending FIN packet!";
+    exit(1);
+  }
+
   
   /*
   cerr<<"Received ACK for SYNACK";
