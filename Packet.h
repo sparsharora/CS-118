@@ -40,7 +40,7 @@ public:
   void setACK();
   void setFIN();
   Header tcpHeader();
-  char* getData(); 
+  void getData(char* ch); 
   //void setData(char* ch);    //Make this function with a dynamic function signature
   void extractPacket(char* c, size_t bytes);
   void createPacket(char* store);
@@ -63,9 +63,9 @@ Packet::Packet(){
 }
 
 
-char* Packet::getData()
+void Packet::getData(char* ch)
 {
-  return this->packetData;
+  strcpy(ch, this->packetData);
 }
 void Packet::setPacketdata(char* ch){
   strcpy(this->packetData, ch);
@@ -91,6 +91,10 @@ void Packet::createFirstPacket(const char* filename, char* store){
   strcat(store, ",");
 
   sprintf(temp,"%d",header.ACK);
+  strcat(store,temp);
+  strcat(store, ",");
+
+  sprintf(temp,"%d",header.FIN);
   strcat(store,temp);
   strcat(store, ",");
   
@@ -125,6 +129,10 @@ void Packet::createPacket(char* store){
   strcat(store,temp);
   strcat(store, ",");
 
+  sprintf(temp,"%d",header.FIN);
+  strcat(store,temp);
+  strcat(store, ",");
+
   strcat(store, packetData);
   strcat(store,"\0");
 
@@ -137,18 +145,21 @@ void Packet::extractPacket(char* dataBuff, size_t bytes){
   //cout<<"DATA: "<<dataBuff<<endl;
   
   temp = strtok(dataBuff, ",");
-  header.acknum = atoi(temp);
+  header.seqnum = atoi(temp);
 
 
   temp = strtok(NULL, ",");
-  header.seqnum = atoi(temp);
+  header.acknum = atoi(temp);
 
   temp = strtok(NULL, ",");
   header.SYN = atoi(temp);
 
   temp = strtok(NULL, ",");
   header.ACK = atoi(temp);
-
+  
+  temp = strtok(NULL, ",");
+  header.FIN = atoi(temp);
+  
   temp = strtok(NULL, ",");
   strcpy(packetData,temp);
  

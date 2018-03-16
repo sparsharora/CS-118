@@ -1,5 +1,5 @@
 //server.cpp
-#include<stdio.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -13,17 +13,20 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
-//#include <cstdint>
+#include <vector>
+#include <map>
+#include <fstream>
 #include "Packet.h"
 using namespace std;
 
 //const int port_num = 2010;
-const char* Filename;
+char* Filename;
 char* ver;
 char* conn;
 int status=200;
 char* stm;
 int newfd;
+ifstream infile;
 
 int main(int argc, char** argv){
 
@@ -87,9 +90,15 @@ int main(int argc, char** argv){
     
     Packet p;
     p.extractPacket(dataBuff, newrtc);
+ 
    
     
     if(p.isSYN()==1){
+
+      char t1[MAXDATALENGTH];
+      p.getData(t1);
+     
+      infile.open(t1);
       
       cout<<"Received SYN! Sending SYNACK... ";
       //pACKnum = p.getSeqnum() + 1;
@@ -144,10 +153,10 @@ int main(int argc, char** argv){
   else
     cout<<"Invalid ACK received";
 
-  /Can start splitting file into packets now
+  //Can start splitting file into packets now
   //char reader[MAXDATALENGTH];
 
-  vector<Packet> data;
+  vector<Packet> storedata;
   //vector<int> seqNums;
 
   int readBytes;
@@ -156,23 +165,30 @@ int main(int argc, char** argv){
 
 
   int startSeq = 1;
-  seqNums.push_back(startSeq);
+  //seqNums.push_back(startSeq);
   char tempBuff[MAXDATALENGTH];
 
-  while(readBytes = read(filefd, tempBuff, sizeof(tempBuff)) != 0){
+  if(infile.is_open()){
 
-    if(startSeq > 30720)
-      startSeq = 1;
+    while(!infile.eof()){
 
-    Packet pk;
-    pk.setSeqnum(startSeq);
-    pk.setPacketdata(tempBuff);
-    data.push_back(pk);
-    startSeq+=readBytes;
-
-    cerr<<sizeof(pk);
+      infile >> tempBuff;
+    
+      if(startSeq > 30720)
+	startSeq = 1;
+      
+      Packet pk;
+      pk.setSeqnum(startSeq);
+      cout<<"Fseq: "<<startSeq<<endl;
+      pk.setPacketdata(tempBuff);
+      storedata.push_back(pk);
+      startSeq+=MAXPACKETSIZE;
+    
+    }
   }
 
+  cout<<"exit\n";
+    
   //Send the packets using Selective Repeat protocols:
 
   int nextseqNum = 1; //The next available sequence number
@@ -186,10 +202,11 @@ int main(int argc, char** argv){
 
   while(true){
 
-    while(nextseqNum > wnd_start && nextseqNum < wnd_end){
-
-      data[index].createPacket(packets,0);
-      if(sendto(sockfd, packets, sizeof(data), 0,  (struct sockaddr *) &client_addr, client) < 0){
+    while(nextseqNum >= wnd_start && nextseqNum < wnd_end){   //TODO : Chek when seq number changes!!!!
+     
+      storedata[index].createPacket(packets);
+      cout<<"Seq: "<<storedata[index].getSeqnum()<<endl;
+      if(sendto(sockfd, packets, sizeof(data), 0,  (struct sockaddr *) &client_addr, client) <= 0){
         cerr<<"Error in sending packet!";
         exit(1);
       }
@@ -197,8 +214,10 @@ int main(int argc, char** argv){
       nextseqNum+=sizeof(data[index]); // check if sizeof(data[index]) is MAXPACKETSIZE
     }
 
-    if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client){
-      cerr<<"Error in receiving from client!"
+    bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client);
+
+    if(bt < 0){
+      cerr<<"Error in receiving from client!";
       exit(1);
     }
     else {
@@ -207,29 +226,29 @@ int main(int argc, char** argv){
       if(pp.isACK()){
         if(pp.getACKnum() == expectedACKnum){
           continue;
-      }
+	}
       }
       else
         cerr<<"Invalid ACK";
     }
-)
+
   }
 
 
- //Creating FIN packet after all data has been packetized:
- Packet fin;
- fin.setFIN();
- fin.setSeqnum(0);
- data.push_back(fin);
-
-
+  //Creating FIN packet after all data has been packetized:
+  Packet fin;
+  fin.setFIN();
+  fin.setSeqnum(0);
+  storedata.push_back(fin);
+  
+  
   /*
   cerr<<"Received ACK for SYNACK";
     Packet finalACK;
     finalACK.extractPacket(newBuff, rtt);
     if(finalACK.isACK()  && finalACK.getACKnum()==0){
-      //Handshake is complete now
-      cerr<<"Handshake complete";break;
+    //Handshake is complete now
+    cerr<<"Handshake complete";break;
     }
     else
       cerr<<"Unexpected packet received";

@@ -40,6 +40,9 @@ int main(int argc, char** argv){
 
 
   Filename = argv[3];
+  //const char* sp = " ";
+
+  //strcat(Filename, sp);
  
   
   int port_num = atoi(argv[2]);
@@ -76,6 +79,8 @@ int main(int argc, char** argv){
   char synp[MAXPACKETSIZE];
   char synack[MAXPACKETSIZE];
   p.createFirstPacket(Filename, synp);
+
+  cout<<synp<<endl;
   
   int rtc;
   rtc = sendto(sockfd, synp , sizeof(synp), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
@@ -109,39 +114,46 @@ int main(int argc, char** argv){
   final.setACK();
   
   final.createPacket(synp);
-  //cout<<"Data: "<<data<<endl;
+
   rtc = sendto(sockfd, synp, sizeof(synp), 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
+  
   if(rtc < 0){
-    cerr<<"Error in sending ACK";
+    cerr<<"Error in sending ACK\n";
     exit(1);
   }
-  else{
-    cout<<"Sent FinalACK, Handshake complete.\n";
-  }
-
-
+  else
+    {
+      cout<<"Sent FinalACK, Handshake complete.\n";
+    }
+  
   ofstream out;
-  out.open(Filename);
+  out.open("output", fstream::out | fstream::trunc); //change to original filename
+  out<<"HI";
 
   Packet* buffer[] = {NULL, NULL, NULL, NULL, NULL};
   int head=0;
   int ctr=0;
   int bwnd = 1, ewnd = 4097;
   Packet in;
+  char recBuff[MAXPACKETSIZE];
+  
   while(1){
     
-    bzero(synp, MAXPACKETSIZE);
+    //bzero(synp, MAXPACKETSIZE);
+    //cout<<"here\n";
     
-    rtc = recvfrom(sockfd, synp, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
-
-    in.extractPacket(synp, rtc);
+    rtc = recvfrom(sockfd, recBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
+    cout<<"buff: "<<recBuff<<endl;
+    in.extractPacket(recBuff, rtc);
 
     if(in.isFIN()==1)
       {
+
 	//TODO: implement TIME_WAIT
 	break;
       }
 
+    cout<<"Seq:" <<in.getSeqnum()<<"\n";
     bool isInWindow = false;
 
     if(ewnd < bwnd && (in.getSeqnum() <= ewnd || in.getSeqnum() >= bwnd))
@@ -154,13 +166,21 @@ int main(int argc, char** argv){
       int pno = ((in.getSeqnum()-1)/MAXPACKETSIZE);
       buffer[pno % 5] = &in;
 
+    
+      
       //Check what to write
       while(buffer[head]!=NULL)
 	{
-	  out<<in.getData();
+	  char t2[MAXDATALENGTH];
+	  
+	  (*buffer[head]).getData(t2);
+	  out<<t2;
+	  cout<<"buffer data: "<<t2<<"\n";
 	  ctr++;
 	  buffer[head]=NULL;
 	  head++;
+	  if(head == 5)
+	    head=0;
 	}
 
       bwnd+=ctr*1024;
@@ -189,5 +209,6 @@ int main(int argc, char** argv){
       //ACK SENT
   }    
 
+  out.close();
   return 0;
 }
