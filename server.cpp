@@ -234,30 +234,21 @@ int main(int argc, char** argv){
     else
       cerr<<"Unexpected packet received";
   }
-
   //Can start splitting file into packets now
   
-
-
-
 /*
 	//creating seperate process to keep connection going
 	pID = fork();
-
 	if(pID<0)
 	  fprintf(stderr,"\nError in creating process");
 	if(pID==0){    //child process
-
 	  close(sockfd);
 	  memset(message, 0, 1024);
 	  rtc = read(new, message, 1024);
 	  if(rtc<0)
 	    fprintf(stderr,"\nError reading from socket");
-
 	  fprintf(stdout,"\n%s", message);       //TO DO: close socket!!!
-
 	  parse(message);
-
 	  exit(0);
 	}
 	else
