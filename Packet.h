@@ -7,18 +7,18 @@
 #define SSTHRESH 30720
 #define MAXWINDOW 15360
 #define MAXPACKETSIZE 1024
-#define MAXDATALENGTH 1017
+#define MAXDATALENGTH 1014
 #define BUFSIZE 1032
 using namespace std;
 
 // Variables needed for basic TCP like header:
 class Header {
 public:
-  int16_t seqnum = 0;
-  int16_t acknum = 0;
-  int16_t SYN = 0;
-  int16_t FIN = 0;
-  int16_t ACK = 0;
+  int16_t seqnum;
+  int16_t acknum;
+  int16_t SYN;
+  int16_t FIN;
+  int16_t ACK;
   /*Header size = 7 bytes
   bool SYN = FALSE;
   bool ACK = FALSE;
@@ -54,6 +54,11 @@ private:
 
 Packet::Packet(){
   strcpy(packetData, " ");
+  header.seqnum=0;
+  header.acknum=0;
+  header.SYN=0;
+  header.ACK=0;
+  header.FIN=0;
 }
 
 void Packet::setPacketdata(char* ch){
