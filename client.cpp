@@ -126,7 +126,7 @@ int main(int argc, char** argv){
     }
   
   ofstream out;
-  out.open("output", fstream::out | fstream::trunc); //change to original filename
+  out.open("received.data", fstream::out | fstream::trunc); //change to original filename
 
   Packet* buffer[] = {NULL, NULL, NULL, NULL, NULL};
   int head=0;
