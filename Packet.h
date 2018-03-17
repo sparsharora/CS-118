@@ -7,7 +7,7 @@
 #define MAXSEQNO 30720
 #define SSTHRESH 30720
 #define MAXPACKETSIZE 1024
-#define MAXDATALENGTH 1014
+#define MAXDATALENGTH 1010
 #define BUFSIZE 1032
 #define MAXWINDOWSIZE 5120
 using namespace std;
@@ -48,13 +48,14 @@ public:
   void createFirstPacket(const char* filename, char* store);
 
 private:
-  char packetData[MAXDATALENGTH];    //To store the data
+  char packetData[MAXDATALENGTH+1];    //To store the data
   Header header;
 };
 
 
 Packet::Packet(){
-  strcpy(packetData, " ");
+  bzero(packetData,MAXDATALENGTH+1);
+  //cout<<"Checl: "<<packetData;
   header.seqnum=0;
   header.acknum=0;
   header.SYN=0;
@@ -67,8 +68,11 @@ void Packet::getData(char* ch)
 {
   strcpy(ch, this->packetData);
 }
+
 void Packet::setPacketdata(char* ch){
   strcpy(this->packetData, ch);
+  this->packetData[MAXDATALENGTH] = '\0';
+  //cout << "Data: " << this->packetData << endl;
 }
 
 void Packet::createFirstPacket(const char* filename, char* store){
@@ -140,12 +144,121 @@ void Packet::createPacket(char* store){
 
 void Packet::extractPacket(char* dataBuff, size_t bytes){
 
-  char *temp;
+  int i=0,j=0;
+  char temp[MAXDATALENGTH+1];
+
+  // cout<<"Full: "<<dataBuff<<endl;
+
+  while(dataBuff[i]!='\0')
+    {
+      if(dataBuff[i]==',')
+	{
+	  i++;
+	  break;
+	}
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+    }
+
  
+
+   header.seqnum = atoi(temp);
+   //cout<<"Temp1 = "<<atoi(temp)<<endl;
+   bzero(temp, MAXDATALENGTH);
+   j=0;
+  
+
+   while(dataBuff[i]!='\0')
+     {
+       if(dataBuff[i]==',')
+	 {
+	   i++;
+	   break;
+	 }
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+     }
+
+   //cout<<"Temp2 = "<<temp<<endl;
+   
+   header.acknum = atoi(temp);
+   bzero(temp, MAXDATALENGTH);
+   j=0;
+
+   while(dataBuff[i]!='\0')
+     {
+       if(dataBuff[i]==',')
+	 {
+	  i++;
+	  break;
+	 }
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+     }
+
+   //cout<<"Temp3 = "<<temp<<endl;
+   
+   header.SYN = atoi(temp);
+   bzero(temp, MAXDATALENGTH);
+   j=0;
+
+   while(dataBuff[i]!='\0')
+     {
+       if(dataBuff[i]==',')
+	 {
+	   i++;
+	   break;
+	 }
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+     }
+
+   //cout<<"Temp4 = "<<temp<<endl;
+
+   header.ACK = atoi(temp);
+   bzero(temp, MAXDATALENGTH);
+   j=0;
+
+   while(dataBuff[i]!='\0')
+     {
+       if(dataBuff[i]==',')
+	 {
+	  i++;
+	  break;
+	 }
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+     }
+
+   //cout<<"Temp5 = "<<temp<<endl;
+   
+   header.FIN = atoi(temp);
+   bzero(temp, MAXDATALENGTH+1);
+   j=0;
+	  
+   while(dataBuff[i]!='\0')
+     {
+     
+       temp[j]=dataBuff[i];
+       j++;
+       i++;
+     }
+   //cout<<"Temp = "<<temp<<endl;
+   
+   strcpy(packetData, temp);
+
+   //cout<<"Data: "<<packetData<<endl;
+
+   /*   
   //cout<<"DATA: "<<dataBuff<<endl;
   
   temp = strtok(dataBuff, ",");
-  header.seqnum = atoi(temp);
+ 
 
 
   temp = strtok(NULL, ",");
@@ -159,10 +272,14 @@ void Packet::extractPacket(char* dataBuff, size_t bytes){
   
   temp = strtok(NULL, ",");
   header.FIN = atoi(temp);
-  
-  temp = strtok(NULL, ",");
-  strcpy(packetData,temp);
+
  
+  temp = strtok(NULL, ",");
+
+   cout<<"temp: "<<temp<<"data: "<<dataBuff<<endl;
+
+  strcpy(packetData,temp);
+   */
  }
 
 int Packet::getACKnum(){

@@ -103,7 +103,7 @@ int main(int argc, char** argv){
       char t1[MAXDATALENGTH];
       p.getData(t1);
      
-      infile.open(t1);
+      infile.open(t1, std::fstream::in | std::fstream::binary);
       
       cout<<"Received SYN! Sending SYNACK... ";
       //pACKnum = p.getSeqnum() + 1;
@@ -120,15 +120,14 @@ int main(int argc, char** argv){
   pACK.setACK();
   pACK.setSYN();
 
-  char data[MAXPACKETSIZE];
+  char data[MAXPACKETSIZE+1];
   size_t ret;
 
   while(1){
-    //Turn the side bitch to a nine piece
-    //size_t ret;
+      //size_t ret;
 
     pACK.createPacket(data);
-    //cout<<"Data: "<<data<<endl;
+    data[MAXPACKETSIZE]='\0';
     ret = sendto(sockfd, data, sizeof(data), 0,  (struct sockaddr *) &client_addr, client);
     if(ret < 0){
       cerr<<"Error in sending SYNACK";
@@ -149,6 +148,7 @@ int main(int argc, char** argv){
     cerr<<"Error in receiving ACK for SYNACK";
     exit(1);
   }
+  data[MAXPACKETSIZE]='\0';
   
   Packet pAck;
   pAck.extractPacket(data, ret);
@@ -169,22 +169,25 @@ int main(int argc, char** argv){
   int wnd_end = 5*MAXPACKETSIZE;
 
 
-  int startSeq = 1;
+  short int startSeq = 1;
   //seqNums.push_back(startSeq);
-  char tempBuff[MAXDATALENGTH];
-
+  char tempBuff[MAXDATALENGTH+1];
+  
   if(infile.is_open()){
 
     while(!infile.eof()){
 
-      infile >> tempBuff;
-    
+      bzero(tempBuff, MAXDATALENGTH+1);
+
+      infile.read(tempBuff, MAXDATALENGTH);
+      tempBuff[MAXDATALENGTH]='\0';
+
+      
       if(startSeq > 30720)
 	startSeq = 1;
-      
       Packet pk;
       pk.setSeqnum(startSeq);
-      cout<<"Fseq: "<<startSeq<<endl;
+      
       pk.setPacketdata(tempBuff);
       storedata.push_back(pk);
       startSeq+=MAXPACKETSIZE;
@@ -192,42 +195,57 @@ int main(int argc, char** argv){
     }
   }
 
-  cout<<"exit\n";
     
   //Send the packets using Selective Repeat protocols:
 
   int nextseqNum = 1; //The next available sequence number
   int index = 0;
-  char randomBuff[MAXPACKETSIZE];
-  char packets[MAXPACKETSIZE];
-  bzero(randomBuff, MAXPACKETSIZE);
-  bzero(packets, MAXPACKETSIZE);
+  char randomBuff[MAXPACKETSIZE+1];
+  char packets[MAXPACKETSIZE+1];
+  bzero(randomBuff, MAXPACKETSIZE+1);
+  bzero(packets, MAXPACKETSIZE+1);
   size_t bt;
   int expectedACKnum = 1;
 
   int ackSize = storedata.size();
-  vector<int> wait(ackSize,0);  //Vector if ackNumbers 
+
+  vector<int> wait(ackSize,0);  //Vector if ackNumbers
+  char t3[MAXDATALENGTH+1];
   
   
   while(true && index < storedata.size()){
+    
+    bool stillinWindow = false;
+    if (wnd_start > wnd_end && (nextseqNum >= wnd_start || nextseqNum < wnd_end))
+      stillinWindow = true;
+    else if (wnd_start < wnd_end && (nextseqNum >= wnd_start && nextseqNum < wnd_end))
+      stillinWindow = true;
+    while (stillinWindow && index < storedata.size())
+      {
+	
+	bzero(packets, MAXPACKETSIZE+1);
+	
+	storedata[index].getData(t3);
+	storedata[index].createPacket(packets);
+	packets[MAXPACKETSIZE] = '\0';
+	
 
-    while(nextseqNum >= wnd_start && nextseqNum < wnd_end){
-     
-      storedata[index].createPacket(packets);
-      cout<<"Seq: "<<storedata[index].getSeqnum()<<endl;
-      if(sendto(sockfd, packets, sizeof(data), 0,  (struct sockaddr *) &client_addr, client) <= 0){
-        cerr<<"Error in sending packet!";
-        exit(1);
+	
+	if(sendto(sockfd, packets, MAXPACKETSIZE, 0,  (struct sockaddr *) &client_addr, client) <= 0){
+	  cerr<<"Error in sending packet!";
+	  exit(1);
+	}
+	index++;
+	nextseqNum+=MAXPACKETSIZE; // check if sizeof(data[index]) is MAXPACKETSIZE
+
       }
-      index++;
-      nextseqNum+=sizeof(data[index]); // check if sizeof(data[index]) is MAXPACKETSIZE
-    }
-
+    
     if(bt = recvfrom(sockfd, randomBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&client_addr, (socklen_t*)&client) < 0){
       cout<<"Error in receiving from client!";
       exit(1);
     }
     else {
+      randomBuff[MAXPACKETSIZE]='\0';
       Packet pp;
       pp.extractPacket(randomBuff,bt);
       if(pp.isACK()){
@@ -235,16 +253,26 @@ int main(int argc, char** argv){
 	int packetNumber = mapping(pp.getACKnum());
 	wait.at(packetNumber) = pp.getACKnum();
 
-	if(pp.getACKnum()> wnd_start && pp.getACKnum() < wnd_end){
-
+	bool isInWindow = false;
+	if (wnd_start > wnd_end && (pp.getACKnum() >= wnd_start || pp.getACKnum() < wnd_end))
+	  isInWindow = true;
+	else if (wnd_start < wnd_end && (pp.getACKnum()>= wnd_start && pp.getACKnum() < wnd_end))
+	  isInWindow = true;
+	
+	if (isInWindow){
+	  
 	  if(pp.getACKnum() == expectedACKnum){
-
+	    
 	    int flag = 0;
 	    int i;
 	    for(i = packetNumber; i < packetNumber+5; i++){
-	      if(wait[i]==0)
-		flag=1;break;}
+	      if(wait[i]==0){
+		flag=1;
+		break;
+	      }
+	    }
 
+	    
 	    //If entire window has been ACKd
 	    if(!flag){
 	      expectedACKnum = wait[i-1] + MAXPACKETSIZE;
@@ -252,9 +280,16 @@ int main(int argc, char** argv){
 	      wnd_end = expectedACKnum + 4*MAXPACKETSIZE;
 	    }
 	    else{
+	      int temp;
 	      expectedACKnum = wait[i-1] + MAXPACKETSIZE;
+
+	      if(expectedACKnum > MAXSEQNO)
+		expectedACKnum-=MAXSEQNO;
 	      wnd_start = expectedACKnum;
-	      wnd_end = expectedACKnum + 4*MAXPACKETSIZE;
+	      if((temp = expectedACKnum + 4*MAXPACKETSIZE) > MAXSEQNO)
+		wnd_end = temp - MAXSEQNO;
+	      else
+		wnd_end = temp;
 	    }
 	  }
 	}
@@ -263,7 +298,7 @@ int main(int argc, char** argv){
       else
         cerr<<"Invalid ACK";continue;
     }
-
+    
   }
 
 
@@ -271,47 +306,18 @@ int main(int argc, char** argv){
   Packet fin;
   fin.setFIN();
   fin.setSeqnum(0);
-  char last[MAXPACKETSIZE];
+  char last[MAXPACKETSIZE+1];
   fin.createPacket(last);
   storedata.push_back(fin);
+  last[MAXPACKETSIZE]='\0';
   
-  if(ret = sendto(sockfd,last,sizeof(last),0,(struct sockaddr*) &client_addr, client) < 0){
+  if(ret = sendto(sockfd,last, MAXPACKETSIZE ,0,(struct sockaddr*) &client_addr, client) < 0){
     cout<<"Error in sending FIN packet!";
     exit(1);
   }
 
   
-  /*
-  cerr<<"Received ACK for SYNACK";
-    Packet finalACK;
-    finalACK.extractPacket(newBuff, rtt);
-    if(finalACK.isACK()  && finalACK.getACKnum()==0){
-    //Handshake is complete now
-    cerr<<"Handshake complete";break;
-    }
-    else
-      cerr<<"Unexpected packet received";
-  }
-  //Can start splitting file into packets now
-  
-/*
-	//creating seperate process to keep connection going
-	pID = fork();
-	if(pID<0)
-	  fprintf(stderr,"\nError in creating process");
-	if(pID==0){    //child process
-	  close(sockfd);
-	  memset(message, 0, 1024);
-	  rtc = read(new, message, 1024);
-	  if(rtc<0)
-	    fprintf(stderr,"\nError reading from socket");
-	  fprintf(stdout,"\n%s", message);       //TO DO: close socket!!!
-	  parse(message);
-	  exit(0);
-	}
-	else
-	  close(new);
-  */
+ 
    return 0;
   }
 

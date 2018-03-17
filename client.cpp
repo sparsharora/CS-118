@@ -76,11 +76,9 @@ int main(int argc, char** argv){
   p.setACKnum(0);
   p.setSYN();
 
-  char synp[MAXPACKETSIZE];
-  char synack[MAXPACKETSIZE];
+  char synp[MAXPACKETSIZE+1];
+  char synack[MAXPACKETSIZE+1];
   p.createFirstPacket(Filename, synp);
-
-  cout<<synp<<endl;
   
   int rtc;
   rtc = sendto(sockfd, synp , sizeof(synp), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
@@ -128,23 +126,29 @@ int main(int argc, char** argv){
   
   ofstream out;
   out.open("output", fstream::out | fstream::trunc); //change to original filename
-  out<<"HI";
 
   Packet* buffer[] = {NULL, NULL, NULL, NULL, NULL};
   int head=0;
   int ctr=0;
   int bwnd = 1, ewnd = 4097;
   Packet in;
-  char recBuff[MAXPACKETSIZE];
+  char recBuff[MAXPACKETSIZE+1];
   
+  //out.flush();
   while(1){
     
     //bzero(synp, MAXPACKETSIZE);
-    //cout<<"here\n";
+
     
     rtc = recvfrom(sockfd, recBuff, MAXPACKETSIZE, 0, (struct sockaddr*)&server_addr, &servr);
-    cout<<"buff: "<<recBuff<<endl;
+    
+    recBuff[MAXPACKETSIZE] = '\0';
+    //cout << "Is this right: " << recBuff << endl;
     in.extractPacket(recBuff, rtc);
+    char t3[MAXDATALENGTH+1];
+    in.getData(t3);
+    t3[MAXDATALENGTH]='\0';
+
 
     if(in.isFIN()==1)
       {
@@ -153,7 +157,6 @@ int main(int argc, char** argv){
 	break;
       }
 
-    cout<<"Seq:" <<in.getSeqnum()<<"\n";
     bool isInWindow = false;
 
     if(ewnd < bwnd && (in.getSeqnum() <= ewnd || in.getSeqnum() >= bwnd))
@@ -169,13 +172,16 @@ int main(int argc, char** argv){
     
       
       //Check what to write
+      //out.flush();
       while(buffer[head]!=NULL)
 	{
-	  char t2[MAXDATALENGTH];
+	  char t2[MAXDATALENGTH+1];
 	  
 	  (*buffer[head]).getData(t2);
+	  t2[MAXDATALENGTH]='\0';
 	  out<<t2;
-	  cout<<"buffer data: "<<t2<<"\n";
+	  out.flush();
+
 	  ctr++;
 	  buffer[head]=NULL;
 	  head++;
@@ -185,7 +191,7 @@ int main(int argc, char** argv){
 
       bwnd+=ctr*1024;
       ewnd+=ctr*1024;
-
+      
       if (bwnd > MAXSEQNO)
 	bwnd = bwnd - MAXSEQNO;
       if (ewnd > MAXSEQNO)
@@ -193,22 +199,22 @@ int main(int argc, char** argv){
       
       ctr=0;
     }
-            
-      //Send ACK
+    
+    //Send ACK
       
-      Packet pack;
-      bzero(synp, MAXPACKETSIZE);
-      
-      pack.setACK();
-      pack.setSeqnum(in.getSeqnum());
-      
-      pack.createPacket(synp);
-      
-      rtc = sendto(sockfd, synp, sizeof(synp), 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
-      
-      //ACK SENT
+    Packet pack;
+    bzero(synp, MAXPACKETSIZE+1);
+    
+    pack.setACK();
+    pack.setACKnum(in.getSeqnum());
+    
+    pack.createPacket(synp);
+    
+    rtc = sendto(sockfd, synp, MAXPACKETSIZE, 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
+    
+    //ACK SENT
   }    
-
+  
   out.close();
   return 0;
 }
