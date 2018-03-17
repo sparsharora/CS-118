@@ -85,7 +85,8 @@ int main(int argc, char** argv){
       cerr<<"\nError in accepting connection";
       exit(1);
     }
-    
+
+   
     
 	   
     //TODO: Check if Filename exists, handle errors!!!
@@ -96,7 +97,7 @@ int main(int argc, char** argv){
     Packet p;
     p.extractPacket(dataBuff, newrtc);
  
-   
+    cout<<"Receiving packet SYN"<<endl;
     
     if(p.isSYN()==1){
 
@@ -104,8 +105,15 @@ int main(int argc, char** argv){
       p.getData(t1);
      
       infile.open(t1, std::fstream::in | std::fstream::binary);
+      if(!infile.good())
+	{
+	  cerr<<"Error 404: File not found in server!"<<endl;
+	  shutdown(sockfd, SHUT_RDWR);
+	  close(sockfd);
+	  exit(1);
+	}
       
-      cout<<"Received SYN! Sending SYNACK... ";
+      //cout<<"Received SYN! Sending SYNACK... ";
       //pACKnum = p.getSeqnum() + 1;
       break;
     }
@@ -134,7 +142,7 @@ int main(int argc, char** argv){
       exit(1);
     }
     else{
-      cout<<"Sent SYNACK, waiting for ACK...\n";
+      cout<<"Sending Packet SYNACK"<<endl;
       break;
     }
   }
@@ -154,9 +162,9 @@ int main(int argc, char** argv){
   pAck.extractPacket(data, ret);
   
   if(pAck.getSeqnum() == 0 && pAck.isACK() == 1)
-    cout<<"Recieved Final Ack. Handshake Complete!...\n";
+    cout<<"Received Packet ACK"<<endl;
   else
-    cout<<"Invalid ACK received";
+    cerr<<"Invalid ACK received";
 
   //Can start splitting file into packets now
   //char reader[MAXDATALENGTH];
@@ -235,6 +243,7 @@ int main(int argc, char** argv){
 	  cerr<<"Error in sending packet!";
 	  exit(1);
 	}
+	cout<<"Sending Packet "<<storedata[index].getSeqnum()<<" 5120"<<endl;
 	index++;
 	nextseqNum+=MAXPACKETSIZE; // check if sizeof(data[index]) is MAXPACKETSIZE
 
@@ -245,9 +254,11 @@ int main(int argc, char** argv){
       exit(1);
     }
     else {
+   
       randomBuff[MAXPACKETSIZE]='\0';
       Packet pp;
       pp.extractPacket(randomBuff,bt);
+      cout<<"Receving Packet "<<pp.getACKnum()<<" 5120"<<endl;
       if(pp.isACK()){
 
 	int packetNumber = mapping(pp.getACKnum());
@@ -315,6 +326,8 @@ int main(int argc, char** argv){
     cout<<"Error in sending FIN packet!";
     exit(1);
   }
+
+  cout<<"Sending Packet "<< fin.getSeqnum()<<" 5120 FIN"<<endl;
 
   
  

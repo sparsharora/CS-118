@@ -34,7 +34,8 @@ int main(int argc, char** argv){
   //TODO: Check for other errors in arguments!!!!
   
   if(argc!=4){
-    cerr<<"Invalid usage. Format: ./server <portnumber>";
+    cerr<<"Invalid usage. Format: ./client <hostname> <port_num> <Filename>";
+    //    close(sockfd);
     exit(1);
   }
 
@@ -87,7 +88,7 @@ int main(int argc, char** argv){
     exit(1);
   }
 
-  cout<<"Sent Filename! Waiting for File....\n";
+  cout<<"Sending Packet SYN"<<endl;
 
   //Sending ACK for SYNACK.
 
@@ -102,7 +103,7 @@ int main(int argc, char** argv){
   pAck.extractPacket(synack, rtc);
 
   if(pAck.getSeqnum() == 0 && pAck.isSYN() == 1 && pAck.isACK() == 1)
-    cout<<"Recieved SYNACK. Completing Handshake...\n";
+    cout<<"Received Packet SYNACK"<<endl;
 
   Packet final;
   bzero(synp, MAXPACKETSIZE);
@@ -121,7 +122,7 @@ int main(int argc, char** argv){
   }
   else
     {
-      cout<<"Sent FinalACK, Handshake complete.\n";
+      cout<<"Sending Packet ACK"<<endl;
     }
   
   ofstream out;
@@ -145,6 +146,9 @@ int main(int argc, char** argv){
     recBuff[MAXPACKETSIZE] = '\0';
     //cout << "Is this right: " << recBuff << endl;
     in.extractPacket(recBuff, rtc);
+
+  
+
     char t3[MAXDATALENGTH+1];
     in.getData(t3);
     t3[MAXDATALENGTH]='\0';
@@ -156,6 +160,8 @@ int main(int argc, char** argv){
 	//TODO: implement TIME_WAIT
 	break;
       }
+
+      cout<<"Receiving Packet "<<in.getSeqnum()<<endl;
 
     bool isInWindow = false;
 
@@ -211,10 +217,13 @@ int main(int argc, char** argv){
     pack.createPacket(synp);
     
     rtc = sendto(sockfd, synp, MAXPACKETSIZE, 0,  (struct sockaddr *) &server_addr, sizeof(server_addr));
+
+    cout<<"Sending Packet "<<pack.getACKnum()<<endl; 
     
     //ACK SENT
   }    
   
   out.close();
+  close(sockfd);
   return 0;
 }
